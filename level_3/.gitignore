@@ -1,0 +1,10 @@
+/build/
+
+/.xmake/
+/.cache/
+/db/
+
+/compile_commands.json
+
+# remove later
+/.clang-format 
