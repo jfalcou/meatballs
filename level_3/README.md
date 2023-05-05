@@ -32,7 +32,7 @@ $ xmake run benchmark --reporter=benchmark
 
 Some benchmark results are available [here](./benchmark/results.md), they were
 ran on a AMD Ryzen 5 3500u cpu, locked at 2100MHz. The program was compiled
-with `GCC 12.2.1` and the `-O3 -march=native` options.
+with `GCC 13.1.1` and the `-O3 -march=native` options.
 
 In the benchmarks, the floating point version `gemm<float>` is run against
 openblas' `sgemm` and, for small enough matrices, a naive algorithm (with the
@@ -58,4 +58,5 @@ loop swapping optimization).
 	- [x] Small matrices
 	- [x] Big matrices
 	- [ ] Double
+	- [ ] Plots
 
