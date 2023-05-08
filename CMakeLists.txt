@@ -18,9 +18,6 @@ CPMAddPackage(
           "EVE_BUILD_DOCUMENTATION OFF"
 )
 
-# cblas
-find_package(BLAS REQUIRED)
-
 # meatballs
 include_directories(include)
 

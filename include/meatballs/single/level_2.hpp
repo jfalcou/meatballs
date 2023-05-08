@@ -13,8 +13,8 @@ void sgemv(char trans, float alpha, std::span<float> a, std::span<float> x,
 
 // TODO: sgbmv
 
-void ssymv(char uplo, float alpha, std::span<float> a, std::span<float> x, float beta,
-           std::span<float> y) {
+void ssymv(char uplo, float alpha, std::span<float> a, std::span<float> x,
+           float beta, std::span<float> y) {
   xsymv(uplo, alpha, a, x, beta, y);
 }
 
@@ -39,6 +39,8 @@ void ssymv(char uplo, float alpha, std::span<float> a, std::span<float> x, float
 // TODO: ssyr
 
 // TODO: ssyr2
-} // TODO: namespace meatballs
+
+// TODO: sspr2
+} // namespace meatballs
 
 #endif

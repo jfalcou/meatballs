@@ -26,9 +26,9 @@ void xgemv_n(T alpha, std::span<T> a, std::span<T> x, T beta, std::span<T> y) {
   for (auto i = 0; i < m; i++) {
     auto ai = get_row(n, a, i);
 
-    auto xi = alpha * xdot(ai, x);
+    auto t = alpha * xdot(ai, x);
 
-    y[i] = eve::fma(beta, y[i], xi);
+    y[i] = eve::fma(beta, y[i], t);
   }
 };
 
@@ -39,20 +39,20 @@ void xgemv_t(T alpha, std::span<T> a, std::span<T> x, T beta, std::span<T> y) {
 
   auto aj = get_column(m, a, 0);
 
-  auto xj = alpha * x[0];
+  auto t = alpha * x[0];
 
-  eve::algo::transform_to(eve::views::zip(aj, y), y, [xj, beta](auto aj_y) {
+  eve::algo::transform_to(eve::views::zip(aj, y), y, [t, beta](auto aj_y) {
     auto [aj, y] = aj_y;
 
-    return eve::fma(xj, aj, eve::fma(beta, y, T(0)));
+    return eve::fma(t, aj, eve::fma(beta, y, T(0)));
   });
 
   for (auto j = 1; j < n; j++) {
     aj = get_column(m, a, j);
 
-    xj = alpha * x[j];
+    t = alpha * x[j];
 
-    xaxpy(xj, aj, y);
+    xaxpy(t, aj, y);
   }
 };
 
@@ -99,65 +99,62 @@ void xhpmv(T alpha, std::span<T> ap, std::span<T> x, T beta, std::span<T> y){
 // SYMMETRIC
 
 template <typename T>
-void xsymv_kernel_4x4(std::size_t b, std::span<eve::wide<T>> aj, std::span<T> x,
-                      std::span<T> y, eve::wide<T> xj,
-                      eve::wide<T> horizontal) {
-  constexpr auto s = eve::wide<T>::size();
+void xsymv_kernel_4x4(std::size_t to,                 //
+                      std::span<eve::wide<T>> aj,     //
+                      std::span<T> x, std::span<T> y, //
+                      eve::wide<T> w0, eve::wide<T> w1) {
+  for (auto i = 0; i < to; i++) {
+    y[i] += eve::reduce(w0 * aj[i]);
 
-  // TODO: for_each?
-  for (auto i = 0; i < b; i++) {
-    // y[i] = eve::algo::reduce(xj * aj[i], y[i]);
-    for(auto k = 0; k < s; k++) 
-      y[i] += xj.get(k) * aj[i].get(k);
-
-    // horizontal = eve::fma(aj[i], eve::wide(&x[i]), horizontal);
+    w1 += aj[i] * x[i];
   }
 }
 
-// template <typename T>
-// void xsymv_kernel_1x4(std::size_t b, std::size_t j, std::span<eve::wide<T>> aj,
-//                       std::span<T> x, std::span<T> y, eve::wide<T> xj,
-//                       eve::wide<T> horizontal) {
-//   // TODO: for_each?
-//   for (auto i = b; i < j; i++) {
-//     y[i] = eve::algo::reduce(xj * aj[i], y[i]);
+template <typename T>
+void xsymv_kernel_1x4(std::size_t from, std::size_t to, //
+                      std::span<eve::wide<T>> aj,       //
+                      std::span<T> x, std::span<T> y,   //
+                      eve::wide<T> w0, eve::wide<T> w1) {
+  for (auto i = from; i < to; i++) {
+    y[i] += eve::reduce(w0 * aj[i]);
 
-//     horizontal = eve::fma(aj[i], eve::wide(&x[i]), horizontal);
-//   }
-// }
+    w1 += aj[i] * x[i];
+  }
+}
 
 template <typename T>
-void xsymv_kernel_8x1(std::size_t b, std::size_t j,   //
-                      std::span<T> a0,                //
-                      std::span<T> x, std::span<T> y, //
-                      T x0, T horizontal) {
-  // TODO: limited for_each? (maybe with ignore)
+void xsymv_kernel_8x1(std::size_t from, std::size_t to, //
+                      std::span<T> a0,                  //
+                      std::span<T> x, std::span<T> y,   //
+                      T w0, T w1) {
+  for (auto i = 0; i < (to / 4) * 4; i += 4) {
+    // TODO
+  }
 }
 
 template <typename T>
 void xsymv_u(T alpha, std::span<T> a, std::span<T> x, T beta, std::span<T> y) {
   // INFO: column major matrix
-  
-  // TODO
-  // https://github.com/xianyi/OpenBLAS/blob/develop/kernel/x86_64/ssymv_U.c
-
-  constexpr auto s = eve::wide<T>::size();
 
   auto m = a.size() / x.size();
+  auto n = x.size();
 
-  for (auto j = 0; j < m; j += s) {
-    auto xj = alpha * eve::wide<T>(&x[j]);
+  for (auto j = 0; j < n; j += 4) {
+    auto w0 = eve::wide<T>([alpha, x, j] (auto k, auto) {
+      return alpha * x[j + k];
+    });
 
-    auto horizontal = eve::wide<T>(T(0));
+    auto w1 = eve::wide<T>(T(0));
 
-    auto aj = get_columns(m, a, j);
+    auto aj = get_columns(m, a, j); // TODO
 
-    auto b = (j / (2 * s)) * (2 * s);
+    auto b = (j / 8) * 8;
 
+    // full block (4n x 4 and 4 x 4)
     if (b)
-      xsymv_kernel_4x4(b, aj, x, y, xj, horizontal);
-    // if (b < j)
-    //   xsymv_kernel_1x4(b, j, aj, x, y, xj, horizontal);
+      xsymv_kernel_4x4(b, aj, x, y, w0, w1);
+    if (b < j)
+      xsymv_kernel_1x4(b, j, aj, x, y, w0, w1);
 
     // TODO
   }

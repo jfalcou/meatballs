@@ -6,7 +6,7 @@
 #include <vector>
 #include <span>
 
-#define MAX_VALUE 256
+#define MAX_VALUE 64
 
 // SCALAR
 
@@ -64,12 +64,14 @@ std::span<T> get_column(std::size_t m, std::span<T> a, std::size_t j) {
 
 template <typename T>
 std::span<eve::wide<T>> get_columns(std::size_t m, std::span<T> a, std::size_t j) {
-  // TODO!
+  // TODO: segmentation fault
 
   auto aj = std::vector<eve::wide<T>>();
 
   for(auto i = 0; i < m; i++) {
-    auto w = eve::wide<T>([a, i, j, m](auto k, auto) { return a[i + (j + k) * m]; });
+    auto w = eve::wide<T>([a, i, j, m] (auto k, auto) {
+      return a[i + (j + k) * m];
+    });
 
     aj.push_back(w);
   }

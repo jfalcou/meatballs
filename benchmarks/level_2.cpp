@@ -9,17 +9,17 @@
 #include <utilities.hpp>
 
 int main() {
+  std::srand(std::time(nullptr));
+  
   auto m = 4196;
   auto n = 4196;
 
-  
   auto a = create_random_matrix<float>(m, n);
   auto alpha = create_random_scalar<float>();
   auto x = create_random_vector<float>(n);
   auto beta = create_random_scalar<float>();
   auto y = create_random_vector<float>(n);
 
-  
   auto bench = ankerl::nanobench::Bench().relative(true);
 
   {
@@ -46,7 +46,7 @@ int main() {
     bench.run("meatballs", [&] { meatballs::sgemv('T', alpha, a, x, beta, y_); });
   }
 
-  // TODO: sgemv:T
+  // TODO: sgemv:C
 
   // TODO: sgbmv
 
@@ -64,7 +64,7 @@ int main() {
 
   // TODO: strsv
 
-  // TODO: stmsv
+  // TODO: stbsv
 
   // TODO: stpsv
 
@@ -73,6 +73,8 @@ int main() {
   // TODO: ssyr
 
   // TODO: ssyr2
+
+  // TODO: sspr2
 
   return 0;
 }
