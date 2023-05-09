@@ -132,9 +132,8 @@ template <typename T> std::size_t ixamai(std::span<T> x) {
     gv = eve::max(gv, lv);
   }
 
-  // eve::algo::for_each(..., [](auto iterator, auto ignore) {
-  //   // TODO
-  // });
+  // TODO: for_each
+  // eve::algo::for_each(..., [](auto iterator, auto ignore) { });
 
   gi = eve::if_else(gv == eve::reduce(gv, eve::max), gi, eve::zero);
 

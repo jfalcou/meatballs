@@ -51,9 +51,8 @@ int main() {
     auto ym = std::vector<float>(y);
     auto yc = std::vector<float>(y);
 
-    // meatballs::ssymv('U', alpha, a, x, beta, ym);
-    ssymv(alpha, a, x, beta, ym);
-    cblas_ssymv(CblasColMajor, CblasUpper, n, alpha, a.data(), n, x.data(), 1, beta, yc.data(), 1);
+    meatballs::ssymv('L', alpha, a, x, 1.0f, ym);
+    cblas_ssymv(CblasRowMajor, CblasLower, n, alpha, a.data(), n, x.data(), 1, 1.0f, yc.data(), 1);
 
     auto b = ym == yc;
 

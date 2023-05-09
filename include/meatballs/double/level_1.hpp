@@ -36,17 +36,17 @@ void daxpy(double alpha, std::span<double> x, std::span<double> y) {
 double ddot(std::span<double> x, std::span<double> y) { return xdot(x, y); }
 
 double dsdot(double alpha, std::span<double> x, std::span<double> y) {
+  // TODO: xxdot?
+  
   return alpha + xdot(x, y);
 }
 
 double dnrm2(std::span<double> x) { return xnrm2(x); }
 
-double dcnrm2(std::span<std::complex<double>> x) {
-  return 0.0; // TODO: complex
-}
-
 double dznrm2(std::span<std::complex<double>> x) {
-  return 0.0; // TODO: complex
+  // TODO: complex
+
+  return 0.0;
 }
 
 double dasum(std::span<double> x) { return xasum(x); }

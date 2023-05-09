@@ -50,7 +50,19 @@ int main() {
 
   // TODO: sgbmv
 
-  // TODO: ssymv
+  // TODO: ssymv:U
+
+  // {
+  //   bench.title("ssymv:L");
+
+  //   auto y_ = std::vector<float>(y);
+
+  //   bench.run("cblas", [&] { cblas_ssymv(CblasRowMajor, CblasLower, n, alpha, a.data(), n, x.data(), 1, 1.0f, y_.data(), 1); });
+    
+  //   y_ = std::vector<float>(y);
+
+  //   bench.run("meatballs", [&] { meatballs::ssymv('L', alpha, a, x, 1.0f, y_); });
+  // }
 
   // TODO: ssbmv
 

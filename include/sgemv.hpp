@@ -3,8 +3,6 @@
 
 #include <span>
 
-#include <eve/module/algo.hpp>
-
 #include <utilities.hpp>
 
 void sgemv_n(float alpha, std::span<float> a, std::span<float> x, float beta,

@@ -99,70 +99,106 @@ void xhpmv(T alpha, std::span<T> ap, std::span<T> x, T beta, std::span<T> y){
 // SYMMETRIC
 
 template <typename T>
-void xsymv_kernel_4x4(std::size_t to,                 //
-                      std::span<eve::wide<T>> aj,     //
-                      std::span<T> x, std::span<T> y, //
-                      eve::wide<T> w0, eve::wide<T> w1) {
-  for (auto i = 0; i < to; i++) {
-    y[i] += eve::reduce(w0 * aj[i]);
-
-    w1 += aj[i] * x[i];
-  }
-}
-
-template <typename T>
-void xsymv_kernel_1x4(std::size_t from, std::size_t to, //
-                      std::span<eve::wide<T>> aj,       //
-                      std::span<T> x, std::span<T> y,   //
-                      eve::wide<T> w0, eve::wide<T> w1) {
-  for (auto i = from; i < to; i++) {
-    y[i] += eve::reduce(w0 * aj[i]);
-
-    w1 += aj[i] * x[i];
-  }
-}
-
-template <typename T>
-void xsymv_kernel_8x1(std::size_t from, std::size_t to, //
-                      std::span<T> a0,                  //
-                      std::span<T> x, std::span<T> y,   //
-                      T w0, T w1) {
-  for (auto i = 0; i < (to / 4) * 4; i += 4) {
-    // TODO
-  }
-}
-
-template <typename T>
 void xsymv_u(T alpha, std::span<T> a, std::span<T> x, T beta, std::span<T> y) {
-  // INFO: column major matrix
+  // TODO
+};
+
+template <typename T>
+void xsymv_l_kernel_4x4(std::size_t to,                 //
+                        std::vector<eve::wide<T>> ai,   //
+                        std::span<T> x, std::span<T> y, //
+                        eve::wide<T> &w0, eve::wide<T> &w1) {
+  for (auto j = 0; j < to; j++) {
+    y[j] += eve::reduce(w0 * ai[j]);
+
+    w1 += ai[j] * x[j];
+  }
+}
+
+template <typename T>
+void xsymv_l_kernel_1x4(std::size_t from, std::size_t to,   //
+                        std::vector<eve::wide<T>> ai,       //
+                        std::span<T> x, std::span<T> y,     //
+                        eve::wide<T> &w0, eve::wide<T> &w1) {
+  for (auto j = from; j < to; j++) {
+    y[j] += eve::reduce(w0 * ai[j]);
+
+    w1 += ai[j] * x[j];
+  }
+}
+
+template <typename T>
+void xsymv_l_kernel_8x1(std::size_t to,                 //
+                        std::span<T> a0,                //
+                        std::span<T> x, std::span<T> y, //
+                        float* w0, float* w1) {
+  constexpr auto s = eve::wide<T>::size();
+
+  for (auto i = 0; i < (to / s) * s; i += s) {
+    for (auto k = 0; k < s; k++) {
+      y[i + k] += *w0 * a0[i + k];
+
+      *w1 += a0[i] * x[i + k];
+    }
+  }
+}
+
+template <typename T>
+void xsymv_l(T alpha, std::span<T> a, std::span<T> x, T beta, std::span<T> y) {
+  constexpr auto s = eve::wide<T>::size();
 
   auto m = a.size() / x.size();
   auto n = x.size();
 
-  for (auto j = 0; j < n; j += 4) {
-    auto w0 = eve::wide<T>([alpha, x, j] (auto k, auto) {
-      return alpha * x[j + k];
+  for (auto i = 0; i < n; i += s) {
+    auto w0 = eve::wide<T>([alpha, x, i] (auto k, auto) {
+      return alpha * x[i + k];
     });
 
     auto w1 = eve::wide<T>(T(0));
 
-    auto aj = get_columns(m, a, j); // TODO
+    auto ai = get_rows(n, a, i);
 
-    auto b = (j / 8) * 8;
+    auto b = (i / (2 * s)) * (2 * s);
 
-    // full block (4n x 4 and 4 x 4)
     if (b)
-      xsymv_kernel_4x4(b, aj, x, y, w0, w1);
-    if (b < j)
-      xsymv_kernel_1x4(b, j, aj, x, y, w0, w1);
+      xsymv_l_kernel_4x4(b, ai, x, y, w0, w1);
+    if (b < i)
+      xsymv_l_kernel_1x4(b, i, ai, x, y, w0, w1);
 
-    // TODO
+    for (auto k = 0; k < s; k++) {
+      auto ai = get_row(m, a, i + k);
+
+      for (auto j = i; j < i + k; j++) {
+        y[j] += w0.get(k) * ai[j];
+
+        w1.set(k, w1.get(k) + ai[j] * x[j]);
+      }
+
+      y[i + k] += w0.get(k) * ai[i + k] + alpha * w1.get(k);
+    }
   }
-};
+  
+  for (auto i = (m / s) * s; i < m; i++) {
+    auto w0 = alpha * x[i];
 
-template <typename T>
-void xsymv_l(T alpha, std::span<T> a, std::span<T> x, T beta, std::span<T> y) {
-  // TODO
+    auto w1 = 0.0f;
+
+    auto a0 = get_row(n, a, i);
+
+    auto b = (i / (2 * s)) * (2 * s);
+
+    if (b)
+      xsymv_l_kernel_8x1(b, a0, x, y, &w0, &w1);
+
+    for (auto j = b; j < i; j++) {
+      y[j] += w0 * a0[j];
+
+      w1 += a0[j] * x[j];
+    }
+
+    y[i] += w0 * a0[i] + alpha * w1;
+  }
 };
 
 template <typename T>

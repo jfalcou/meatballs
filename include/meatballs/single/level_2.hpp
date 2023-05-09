@@ -30,7 +30,7 @@ void ssymv(char uplo, float alpha, std::span<float> a, std::span<float> x,
 
 // TODO: strsv
 
-// TODO: stmsv
+// TODO: stbsv
 
 // TODO: stpsv
 

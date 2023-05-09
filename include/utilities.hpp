@@ -63,20 +63,18 @@ std::span<T> get_column(std::size_t m, std::span<T> a, std::size_t j) {
 }
 
 template <typename T>
-std::span<eve::wide<T>> get_columns(std::size_t m, std::span<T> a, std::size_t j) {
-  // TODO: segmentation fault
+std::vector<eve::wide<T>> get_rows(std::size_t n, std::span<T> a, std::size_t i) {
+  auto ai = std::vector<eve::wide<T>>();
 
-  auto aj = std::vector<eve::wide<T>>();
-
-  for(auto i = 0; i < m; i++) {
-    auto w = eve::wide<T>([a, i, j, m] (auto k, auto) {
-      return a[i + (j + k) * m];
+  for(auto j = 0; j < n; j++) {
+    auto w = eve::wide<T>([a, i, j, n] (auto k, auto) {
+      return a[(i + k) * n + j];
     });
 
-    aj.push_back(w);
+    ai.push_back(w);
   }
 
-  return std::span<eve::wide<T>>(aj);
+  return ai;
 }
 
 // MATRIX
@@ -114,7 +112,7 @@ std::vector<T> create_random_matrix(std::size_t m, std::size_t n) {
 // void print_matrix(std::size_t m, std::size_t n, std::vector<T> a) {
 //   for (auto i = 0; i < m; i++) {
 //     for (auto j = 0; j < n; j++)
-//       std::cout << a[j * m + i] << ' ';
+//       std::cout << a[i + j * m] << ' ';
 
 //     std::cout << '\n';
 //   }
