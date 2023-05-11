@@ -9,8 +9,6 @@
 
 #include <utilities.hpp>
 
-// INFO: column major matrix
-
 // INFO: no dimension parameters (m, n)
 // INFO: no increment parameters (incx, incy)
 // INFO: no first-dimension parameters (lda)
@@ -20,6 +18,8 @@ namespace meatballs {
 
 template <typename T>
 void xgemv_n(T alpha, std::span<T> a, std::span<T> x, T beta, std::span<T> y) {
+  // INFO: column major matrix
+  
   auto m = a.size() / x.size();
   auto n = x.size();
 
@@ -44,6 +44,8 @@ void xgemv_n(T alpha, std::span<T> a, std::span<T> x, T beta, std::span<T> y) {
 
 template <typename T>
 void xgemv_t(T alpha, std::span<T> a, std::span<T> x, T beta, std::span<T> y) {
+  // INFO: column major matrix
+  
   auto m = a.size() / x.size();
   auto n = x.size();
 
@@ -64,6 +66,8 @@ void xgemv_c(T alpha, std::span<T> a, std::span<T> x, T beta, std::span<T> y){
 template <typename T>
 void xgemv(char trans, T alpha, std::span<T> a, std::span<T> x, T beta,
            std::span<T> y) {
+  // INFO: column major matrix
+
   if (trans == 'N' || trans == 'n')
     xgemv_n(alpha, a, x, beta, y);
   else if (trans == 'T' || trans == 't')
@@ -100,7 +104,7 @@ void xhpmv(T alpha, std::span<T> ap, std::span<T> x, T beta, std::span<T> y){
 
 template <typename T>
 void xsymv_u(T alpha, std::span<T> a, std::span<T> x, T beta, std::span<T> y) {
-  constexpr auto s = eve::wide<T>::size();
+  // INFO: column major matrix
 
   auto n = x.size();
 
@@ -133,7 +137,7 @@ void xsymv_u(T alpha, std::span<T> a, std::span<T> x, T beta, std::span<T> y) {
 
 template <typename T>
 void xsymv_l(T alpha, std::span<T> a, std::span<T> x, T beta, std::span<T> y) {
-  constexpr auto s = eve::wide<T>::size();
+  // INFO: column major matrix
 
   auto n = x.size();
 
@@ -166,6 +170,8 @@ void xsymv_l(T alpha, std::span<T> a, std::span<T> x, T beta, std::span<T> y) {
 
 template <typename T>
 void xsymv(char uplo, T alpha, std::span<T> a, std::span<T> x, T beta, std::span<T> y) {
+  // INFO: column major matrix
+
   if (uplo == 'U' || uplo == 'u')
     xsymv_u(alpha, a, x, beta, y);
   else if (uplo == 'L' || uplo == 'l')
@@ -186,8 +192,49 @@ void xspmv(T alpha, std::span<T> ap, std::span<T> x, T beta, std::span<T> y) {
 // TRIANGULAR
 
 template <typename T>
-void xtrmv(std::span<T> a, std::span<T> x){
-    // TODO
+void xtrmv_u(std::span<T> a, std::span<T> x) {
+  // INFO: row major matrix
+
+  auto n = x.size();
+
+  for (auto i = 0; i < n; i++) {
+    auto j = i;
+    auto m = n - j;
+
+    auto aj = std::span<T>(&a[i * n + j], m);
+    auto xi = std::span<T>(&x[j], m);
+
+    x[i] = xdot(aj, xi);;
+  }
+};
+
+template <typename T>
+void xtrmv_l(std::span<T> a, std::span<T> x) {
+  // INFO: row major matrix
+
+  auto n = x.size();
+
+  for (auto i = 0; i < n; i++) {
+    auto j = 0;
+    auto m = n - i;
+
+    auto aj = std::span<T>(&a[(n - i - 1) * n + j], m);
+    auto xi = std::span<T>(&x[j], m);
+
+    x[(n - i - 1)] = xdot(aj, xi);;
+  }
+};
+
+template <typename T>
+void xtrmv(char uplo, std::span<T> a, std::span<T> x) {
+  // INFO: row major matrix
+
+  // TODO: transpose and unit
+
+  if (uplo == 'U' || uplo == 'u')
+    xtrmv_u(a, x);
+  else if (uplo == 'L' || uplo == 'l')
+    xtrmv_l(a, x);
 };
 
 template <typename T>

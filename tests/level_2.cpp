@@ -80,8 +80,7 @@ int main() {
     auto xm = std::vector<float>(x);
     auto xc = std::vector<float>(x);
 
-    // meatballs::strmv('U', a, xm);
-    strmv('U', a, xm);
+    meatballs::strmv('U', a, xm);
     cblas_strmv(CblasRowMajor, CblasUpper, CblasNoTrans, CblasNonUnit, n, a.data(), n, xc.data(), 1);
 
     auto b = xm == xc;
@@ -93,8 +92,7 @@ int main() {
     auto xm = std::vector<float>(x);
     auto xc = std::vector<float>(x);
 
-    // meatballs::strmv('L', a, xm);
-    strmv('L', a, xm);
+    meatballs::strmv('L', a, xm);
     cblas_strmv(CblasRowMajor, CblasLower, CblasNoTrans, CblasNonUnit, n, a.data(), n, xc.data(), 1);
 
     auto b = xm == xc;

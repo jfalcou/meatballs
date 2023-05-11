@@ -105,7 +105,9 @@ int main() {
 
     bench.run("cblas", [&] { cblas_strmv(CblasRowMajor, CblasUpper, CblasNoTrans, CblasNonUnit, n, a.data(), n, x_.data(), 1); });
     
-    // TODO
+    x_ = std::vector<float>(x);
+
+    bench.run("meatballs", [&] { meatballs::strmv('U', a, x_); });
 
     x_ = std::vector<float>(x);
 
@@ -119,7 +121,9 @@ int main() {
 
     bench.run("cblas", [&] { cblas_strmv(CblasRowMajor, CblasLower, CblasNoTrans, CblasNonUnit, n, a.data(), n, x_.data(), 1); });
     
-    // TODO
+    x_ = std::vector<float>(x);
+
+    bench.run("meatballs", [&] { meatballs::strmv('L', a, x_); });
 
     x_ = std::vector<float>(x);
 

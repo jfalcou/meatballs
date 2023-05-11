@@ -22,7 +22,9 @@ void ssymv(char uplo, float alpha, std::span<float> a, std::span<float> x,
 
 // TODO: sspmv
 
-// TODO: strmv
+void strmv(char uplo, std::span<float> a, std::span<float> x) {
+  xtrmv(uplo, a, x);
+}
 
 // TODO: stbmv
 
