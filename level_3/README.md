@@ -38,6 +38,20 @@ In the benchmarks, the floating point version `gemm<float>` is run against
 openblas' `sgemm` and, for small enough matrices, a naive algorithm (with the
 loop swapping optimization).
 
+## Plot
+
+The number of cycles per computed matrix entries can be plotted by running the
+following commands:
+
+```bash
+$ ./build/benchmark/benchmark --reporter=plot::out=metrics.json
+$ python3 benchmark/plot.py metrics.json -o plot.svg
+```
+
+It gives the following plot for the benchmark run mentionned above:
+
+![](./benchmark/plot.png)
+
 ## TODO
 
 - [x] Integrate the kernels to the main matrix multiplication function

@@ -44,9 +44,6 @@ public:
 
         const auto title = fmt::format("\n## Benchmark \"{}\"", info.name);
         fmt::print(m_stream, "{}\n", title);
-        if (m_verbosityLevel == Catch::Verbosity::High) {
-            fmt::print("{}\n", title);
-        }
         m_currentTestCase = info.name;
     }
 
@@ -61,9 +58,6 @@ public:
 
         const auto title = fmt::format("\n### {}", info.name);
         fmt::print(m_stream, "{}\n", title);
-        if (m_verbosityLevel == Catch::Verbosity::High) {
-            fmt::print("{}\n", title);
-        }
     }
 
     void sectionEnded(const Catch::SectionStats& stats) override {
@@ -78,7 +72,7 @@ public:
         Catch::StreamingReporterBase::testCasePartialStarting(info, partNumber);
 
         if (m_verbosityLevel == Catch::Verbosity::High) {
-            fmt::print("- {}#{} ...\n", info.name, partNumber);
+            fmt::print(m_stream, "- {}#{} ...\n", info.name, partNumber);
         }
     }
 };

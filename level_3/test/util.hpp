@@ -2,7 +2,7 @@
 #define GEMM_TEST_UTIL_HPP
 
 #include <catch2/catch_get_random_seed.hpp>
-#include <openblas/cblas.h>
+#include <cblas.h>
 
 #include <random>
 #include <vector>

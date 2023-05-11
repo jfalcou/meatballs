@@ -1,9 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators_range.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
+#include <cblas.h>
 #include <fmt/core.h>
 #include <nanobench.h>
-#include <openblas/cblas.h>
 
 #include "util.hpp"
 #include <gemm/gemm.hpp>
@@ -35,6 +35,7 @@ TEST_CASE("M,N,K <= 8", "[small]") {
         auto* ptr_C = C.data();
 
         bench.title(fmt::format("{}x{} * {}x{}", M, K, K, N));
+        bench.batch(M * N);
 
         bench.run("blas", [=] { cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K, alpha, ptr_A, K, ptr_B, N, beta, ptr_C, N); });
         std::copy(oldC.begin(), oldC.end(), C.begin());
@@ -46,7 +47,7 @@ TEST_CASE("M,N,K <= 8", "[small]") {
     }
 }
 
-TEST_CASE("Square 1 <= dim <= 512", "[square][small]") {
+TEST_CASE("1 <= dim <= 512", "[square][small]") {
     using util::bench;
 
     bench.warmup(0);
@@ -69,6 +70,7 @@ TEST_CASE("Square 1 <= dim <= 512", "[square][small]") {
         auto* ptr_C = C.data();
 
         bench.title(fmt::format("{0}x{0}", dim));
+        bench.batch(dim * dim);
 
         bench.run("blas", [=] { cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim, dim, dim, alpha, ptr_A, dim, ptr_B, dim, beta, ptr_C, dim); });
         std::copy(oldC.begin(), oldC.end(), C.begin());
@@ -77,6 +79,13 @@ TEST_CASE("Square 1 <= dim <= 512", "[square][small]") {
         std::copy(oldC.begin(), oldC.end(), C.begin());
 
         bench.run("naive", [=] { util::naive_gemm(dim, dim, dim, alpha, ptr_A, dim, ptr_B, dim, beta, ptr_C, dim); });
+
+        if (util::collect_metrics) {
+            const auto& results = bench.results();
+            util::openblas_metrics.push_back(util::average_cycles_per_op(results[0]));
+            util::gemm_metrics.push_back(util::average_cycles_per_op(results[1]));
+            util::dimensions.push_back(dim);
+        }
     }
 }
 
@@ -108,6 +117,7 @@ TEST_CASE("Non square", "[large]") {
         auto* ptr_C = C.data();
 
         bench.title(fmt::format("{}x{} * {}x{}", M, K, K, N));
+        bench.batch(M * N);
 
         bench.run("blas", [=] { cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K, alpha, ptr_A, K, ptr_B, N, beta, ptr_C, N); });
         std::copy(oldC.begin(), oldC.end(), C.begin());
@@ -119,7 +129,7 @@ TEST_CASE("Non square", "[large]") {
     }
 }
 
-TEST_CASE("Worst dimension", "[square][large]") {
+TEST_CASE(">= 1024", "[square][large]") {
     using util::bench;
 
     bench.warmup(0);
@@ -127,7 +137,8 @@ TEST_CASE("Worst dimension", "[square][large]") {
     const float alpha = util::random_float<float>();
     const float beta = util::random_float<float>();
 
-    const int dim = gemm::detail::B2<float> + gemm::detail::B1<float> + gemm::detail::TILE_SIZE<float> + 1;
+    // const auto dim = GENERATE(1024, 1327, 2000);
+    const auto dim = GENERATE(1024, 2048);
 
     CAPTURE(dim);
     DYNAMIC_SECTION("" << dim << "x" << dim << " * " << dim << "x" << dim) {
@@ -141,41 +152,19 @@ TEST_CASE("Worst dimension", "[square][large]") {
         auto* ptr_C = C.data();
 
         bench.title(fmt::format("{0}x{0}", dim));
+        bench.batch(dim * dim);
 
         bench.run("blas", [=] { cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim, dim, dim, alpha, ptr_A, dim, ptr_B, dim, beta, ptr_C, dim); });
         std::copy(oldC.begin(), oldC.end(), C.begin());
 
         bench.run("gemm", [=] { gemm::sgemm(util::no_trans, util::no_trans, dim, dim, dim, alpha, ptr_A, dim, ptr_B, dim, beta, ptr_C, dim); });
-    }
-}
 
-TEST_CASE(">= 1024", "[square][very large]") {
-    using util::bench;
-
-    bench.warmup(0);
-
-    const float alpha = util::random_float<float>();
-    const float beta = util::random_float<float>();
-
-    const auto dim = GENERATE(1024, 1327, 2000);
-
-    CAPTURE(dim);
-    DYNAMIC_SECTION("" << dim << "x" << dim << " * " << dim << "x" << dim) {
-        const auto A = util::random_vector<float>(dim * dim);
-        const auto B = util::random_vector<float>(dim * dim);
-        auto C = util::random_vector<float>(dim * dim);
-        auto oldC = C;
-
-        const auto* ptr_A = A.data();
-        const auto* ptr_B = B.data();
-        auto* ptr_C = C.data();
-
-        bench.title(fmt::format("{0}x{0}", dim));
-
-        bench.run("blas", [=] { cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim, dim, dim, alpha, ptr_A, dim, ptr_B, dim, beta, ptr_C, dim); });
-        std::copy(oldC.begin(), oldC.end(), C.begin());
-
-        bench.run("gemm", [=] { gemm::sgemm(util::no_trans, util::no_trans, dim, dim, dim, alpha, ptr_A, dim, ptr_B, dim, beta, ptr_C, dim); });
+        if (util::collect_metrics) {
+            const auto& results = bench.results();
+            util::openblas_metrics.push_back(util::average_cycles_per_op(results[0]));
+            util::gemm_metrics.push_back(util::average_cycles_per_op(results[1]));
+            util::dimensions.push_back(dim);
+        }
     }
 }
 
@@ -201,10 +190,18 @@ TEST_CASE(">= 4096", "[square][very large]") {
         auto* ptr_C = C.data();
 
         bench.title(fmt::format("{0}x{0}", dim));
+        bench.batch(dim * dim);
 
         bench.run("blas", [=] { cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim, dim, dim, alpha, ptr_A, dim, ptr_B, dim, beta, ptr_C, dim); });
         std::copy(oldC.begin(), oldC.end(), C.begin());
 
         bench.run("gemm", [=] { gemm::sgemm(util::no_trans, util::no_trans, dim, dim, dim, alpha, ptr_A, dim, ptr_B, dim, beta, ptr_C, dim); });
+
+        if (util::collect_metrics) {
+            const auto& results = bench.results();
+            util::openblas_metrics.push_back(util::average_cycles_per_op(results[0]));
+            util::gemm_metrics.push_back(util::average_cycles_per_op(results[1]));
+            util::dimensions.push_back(dim);
+        }
     }
 }

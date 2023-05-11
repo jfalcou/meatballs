@@ -25,6 +25,7 @@ set(BENCHMARK_SOURCES
   nanobench.cpp
   benchmark.cpp
   benchmark_reporter.cpp
+  plot_reporter.cpp
 )
 
 add_executable(benchmark ${BENCHMARK_SOURCES})

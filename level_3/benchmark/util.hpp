@@ -24,7 +24,7 @@ namespace util
     inline std::ostringstream bench_output;
 
     // Benchmark runner
-    inline auto bench = ankerl::nanobench::Bench().warmup(10).relative(true);
+    inline auto bench = ankerl::nanobench::Bench().unit("value").warmup(10).relative(true);
 
     // Returns a random floating point value
     template<typename T>
@@ -43,6 +43,30 @@ namespace util
         }
 
         return v;
+    }
+
+    // Boolean indicating if benchmark results should be stored
+    inline bool collect_metrics = false;
+
+    // Values collected during the benchmark, for plotting
+    inline std::vector<double> openblas_metrics;
+    inline std::vector<double> gemm_metrics;
+
+    // Dimensions used for the x axis of the plot
+    inline std::vector<int> dimensions;
+
+    inline void clear_metrics() {
+        openblas_metrics.clear();
+        gemm_metrics.clear();
+        dimensions.clear();
+    }
+
+    // Returns the average number of cycles per operation for a benchmark run
+    inline double average_cycles_per_op(const ankerl::nanobench::Result& res) {
+        using Measure = ankerl::nanobench::Result::Measure;
+        const double average_cycles = res.average(Measure::cpucycles);
+        const double nb_computed_values = res.config().mBatch;
+        return average_cycles / nb_computed_values;
     }
 
     // Naive matrix multiplication
