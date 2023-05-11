@@ -5,16 +5,18 @@
 
 #include <utilities.hpp>
 
+// INFO: column major matrix
+
 void sgemv_n(float alpha, std::span<float> a, std::span<float> x, float beta,
           std::span<float> y) {
   auto m = a.size() / x.size();
   auto n = x.size();
 
-  for (auto i = 0; i < m; i++){
+  for (auto i = 0; i < m; i++) {
     y[i] *= beta;
     
     for (auto j = 0; j < n; j++) 
-      y[i] += alpha * a[i * n + j] * x[j];
+      y[i] += alpha * a[i + j * m] * x[j];
   }
 }
 
@@ -23,11 +25,11 @@ void sgemv_t(float alpha, std::span<float> a, std::span<float> x, float beta,
   auto m = a.size() / x.size();
   auto n = x.size();
 
-  for (auto i = 0; i < m; i++){
-    y[i] *= beta;
+  for (auto j = 0; j < n; j++) {
+    y[j] *= beta;
     
-    for (auto j = 0; j < n; j++) 
-      y[i] += alpha * a[i + j * m] * x[j];
+    for (auto i = 0; i < m; i++) 
+      y[j] += alpha * a[i + j * m] * x[i];
   }
 }
 
