@@ -9,7 +9,7 @@
 
 #include <utilities.hpp>
 
-// INFO: row major matrix
+// INFO: column major matrix
 
 // INFO: no dimension parameters (m, n)
 // INFO: no increment parameters (incx, incy)
@@ -23,21 +23,7 @@ void xgemv_n(T alpha, std::span<T> a, std::span<T> x, T beta, std::span<T> y) {
   auto m = a.size() / x.size();
   auto n = x.size();
 
-  for (auto i = 0; i < m; i++) {
-    auto ai = get_row(n, a, i);
-
-    auto t = alpha * xdot(ai, x);
-
-    y[i] = eve::fma(beta, y[i], t);
-  }
-};
-
-template <typename T>
-void xgemv_t(T alpha, std::span<T> a, std::span<T> x, T beta, std::span<T> y) {
-  auto m = a.size() / x.size();
-  auto n = x.size();
-
-  auto aj = get_column(m, a, 0);
+  auto aj = get_column(n, a, 0);
 
   auto t = alpha * x[0];
 
@@ -48,11 +34,25 @@ void xgemv_t(T alpha, std::span<T> a, std::span<T> x, T beta, std::span<T> y) {
   });
 
   for (auto j = 1; j < n; j++) {
-    aj = get_column(m, a, j);
+    aj = get_column(n, a, j);
 
     t = alpha * x[j];
 
     xaxpy(t, aj, y);
+  }
+};
+
+template <typename T>
+void xgemv_t(T alpha, std::span<T> a, std::span<T> x, T beta, std::span<T> y) {
+  auto m = a.size() / x.size();
+  auto n = x.size();
+
+  for (auto j = 0; j < m; j++) {
+    auto aj = get_column(n, a, j);
+
+    auto t = alpha * xdot(aj, x);
+
+    y[j] = eve::fma(beta, y[j], t);
   }
 };
 
@@ -100,46 +100,34 @@ void xhpmv(T alpha, std::span<T> ap, std::span<T> x, T beta, std::span<T> y){
 
 template <typename T>
 void xsymv_u(T alpha, std::span<T> a, std::span<T> x, T beta, std::span<T> y) {
-  // TODO
-};
-
-template <typename T>
-void xsymv_l_kernel_4x4(std::size_t to,                 //
-                        std::vector<eve::wide<T>> ai,   //
-                        std::span<T> x, std::span<T> y, //
-                        eve::wide<T> &w0, eve::wide<T> &w1) {
-  for (auto j = 0; j < to; j++) {
-    y[j] += eve::reduce(w0 * ai[j]);
-
-    w1 += ai[j] * x[j];
-  }
-}
-
-template <typename T>
-void xsymv_l_kernel_1x4(std::size_t from, std::size_t to,   //
-                        std::vector<eve::wide<T>> ai,       //
-                        std::span<T> x, std::span<T> y,     //
-                        eve::wide<T> &w0, eve::wide<T> &w1) {
-  for (auto j = from; j < to; j++) {
-    y[j] += eve::reduce(w0 * ai[j]);
-
-    w1 += ai[j] * x[j];
-  }
-}
-
-template <typename T>
-void xsymv_l_kernel_8x1(std::size_t to,                 //
-                        std::span<T> a0,                //
-                        std::span<T> x, std::span<T> y, //
-                        float* w0, float* w1) {
   constexpr auto s = eve::wide<T>::size();
 
-  for (auto i = 0; i < (to / s) * s; i += s) {
-    for (auto k = 0; k < s; k++) {
-      y[i + k] += *w0 * a0[i + k];
+  auto n = x.size();
 
-      *w1 += a0[i] * x[i + k];
-    }
+  for (auto j = 0; j < n; j++) {
+    y[j] *= beta;
+
+    y[j] += alpha * a[j + j * n] * x[j];
+
+    auto i = 0;
+    auto m = j;
+
+    auto aj = std::span<T>(&a[i + j * n], m);
+    auto yi = std::span<T>(&y[i], m);
+    auto xi = std::span<T>(&x[i], m);
+
+    y[j] += alpha * xdot(aj, xi);
+  }
+
+  for (auto j = 0; j < n; j++) {
+    auto i = 0;
+    auto m = j;
+
+    auto aj = std::span<T>(&a[0 + j * n], m);
+    auto yi = std::span<T>(&y[0], m);
+    auto xi = std::span<T>(&x[0], m);
+
+    xaxpy(alpha * x[j], aj, yi);
   }
 }
 
@@ -147,59 +135,34 @@ template <typename T>
 void xsymv_l(T alpha, std::span<T> a, std::span<T> x, T beta, std::span<T> y) {
   constexpr auto s = eve::wide<T>::size();
 
-  auto m = a.size() / x.size();
   auto n = x.size();
 
-  for (auto i = 0; i < n; i += s) {
-    auto w0 = eve::wide<T>([alpha, x, i] (auto k, auto) {
-      return alpha * x[i + k];
-    });
+  for (auto j = 0; j < n; j++) {
+    y[j] *= beta;
 
-    auto w1 = eve::wide<T>(T(0));
+    y[j] += alpha * a[j + j * n] * x[j];
 
-    auto ai = get_rows(n, a, i);
+    auto i = j + 1;
+    auto m = n - i;
 
-    auto b = (i / (2 * s)) * (2 * s);
+    auto aj = std::span<T>(&a[i + j * n], m);
+    auto yi = std::span<T>(&y[i], m);
+    auto xi = std::span<T>(&x[i], m);
 
-    if (b)
-      xsymv_l_kernel_4x4(b, ai, x, y, w0, w1);
-    if (b < i)
-      xsymv_l_kernel_1x4(b, i, ai, x, y, w0, w1);
-
-    for (auto k = 0; k < s; k++) {
-      auto ai = get_row(m, a, i + k);
-
-      for (auto j = i; j < i + k; j++) {
-        y[j] += w0.get(k) * ai[j];
-
-        w1.set(k, w1.get(k) + ai[j] * x[j]);
-      }
-
-      y[i + k] += w0.get(k) * ai[i + k] + alpha * w1.get(k);
-    }
+    y[j] += alpha * xdot(aj, xi);
   }
-  
-  for (auto i = (m / s) * s; i < m; i++) {
-    auto w0 = alpha * x[i];
 
-    auto w1 = 0.0f;
+  for (auto j = 0; j < n; j++) {
+    auto i = j + 1;
+    auto m = n - i;
 
-    auto a0 = get_row(n, a, i);
+    auto aj = std::span<T>(&a[i + j * n], m);
+    auto yi = std::span<T>(&y[i], m);
+    auto xi = std::span<T>(&x[i], m);
 
-    auto b = (i / (2 * s)) * (2 * s);
-
-    if (b)
-      xsymv_l_kernel_8x1(b, a0, x, y, &w0, &w1);
-
-    for (auto j = b; j < i; j++) {
-      y[j] += w0 * a0[j];
-
-      w1 += a0[j] * x[j];
-    }
-
-    y[i] += w0 * a0[i] + alpha * w1;
+    xaxpy(alpha * x[j], aj, yi);
   }
-};
+}
 
 template <typename T>
 void xsymv(char uplo, T alpha, std::span<T> a, std::span<T> x, T beta, std::span<T> y) {

@@ -17,14 +17,14 @@ int main() {
   auto alpha = create_random_scalar<float>();
   auto x = create_random_vector<float>(n);
   auto beta = create_random_scalar<float>();
-  auto y = create_random_vector<float>(n);
+  auto y = create_random_vector<float>(m);
 
   {
     auto ym = std::vector<float>(y);
     auto yc = std::vector<float>(y);
 
     meatballs::sgemv('N', alpha, a, x, beta, ym);
-    cblas_sgemv(CblasRowMajor, CblasNoTrans, m, n, alpha, a.data(), n, x.data(), 1, beta, yc.data(), 1);
+    cblas_sgemv(CblasColMajor, CblasNoTrans, m, n, alpha, a.data(), n, x.data(), 1, beta, yc.data(), 1);
 
     auto b = ym == yc;
 
@@ -36,7 +36,7 @@ int main() {
     auto yc = std::vector<float>(y);
 
     meatballs::sgemv('T', alpha, a, x, beta, ym);
-    cblas_sgemv(CblasRowMajor, CblasTrans, m, n, alpha, a.data(), n, x.data(), 1, beta, yc.data(), 1);
+    cblas_sgemv(CblasColMajor, CblasTrans, m, n, alpha, a.data(), n, x.data(), 1, beta, yc.data(), 1);
 
     auto b = ym == yc;
 
@@ -51,15 +51,25 @@ int main() {
     auto ym = std::vector<float>(y);
     auto yc = std::vector<float>(y);
 
-    meatballs::ssymv('L', alpha, a, x, 1.0f, ym);
-    cblas_ssymv(CblasRowMajor, CblasLower, n, alpha, a.data(), n, x.data(), 1, 1.0f, yc.data(), 1);
+    meatballs::ssymv('U', alpha, a, x, beta, ym);
+    cblas_ssymv(CblasColMajor, CblasUpper, n, alpha, a.data(), n, x.data(), 1, beta, yc.data(), 1);
 
     auto b = ym == yc;
 
     std::cout << "[ssymv:U]\t" << (b ? "OK" : "KO") << "\n";
   }
 
-  // TODO: ssymv:L
+  {
+    auto ym = std::vector<float>(y);
+    auto yc = std::vector<float>(y);
+
+    meatballs::ssymv('L', alpha, a, x, beta, ym);
+    cblas_ssymv(CblasColMajor, CblasLower, n, alpha, a.data(), n, x.data(), 1, beta, yc.data(), 1);
+
+    auto b = ym == yc;
+
+    std::cout << "[ssymv:L]\t" << (b ? "OK" : "KO") << "\n";
+  }
 
   // TODO: ssbmv
 

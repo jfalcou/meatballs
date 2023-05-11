@@ -11,16 +11,18 @@ void ssymv_u(float alpha, std::span<float> a, std::span<float> x, float beta,
           std::span<float> y) {
   auto m = y.size();
 
-  for (auto i = 0; i < m; i++) {
-    y[i] *= beta;
-    
-    for (auto j = i; j < m; j++) 
-      y[i] += alpha * a[i + j * m] * x[j];
+  for (auto j = 0; j < m; j++) {
+    y[j] *= beta;
+
+    y[j] += alpha * a[j + j * m] * x[j];
+
+    for (auto i = 0; i < j; i++)
+      y[j] += alpha * a[i + j * m] * x[i];
   }
 
-  for (auto i = 0; i < m; i++)
-    for (auto j = i + 1; j < m; j++) 
-      y[j] += alpha * a[i + j * m] * x[i];
+  for (auto j = 0; j < m; j++)
+    for (auto i = 0; i < j; i++) 
+      y[i] += alpha * a[i + j * m] * x[j];
 }
 
 void ssymv_l(float alpha, std::span<float> a, std::span<float> x, float beta,
@@ -30,12 +32,14 @@ void ssymv_l(float alpha, std::span<float> a, std::span<float> x, float beta,
   for (auto j = 0; j < m; j++) {
     y[j] *= beta;
 
-    for (auto i = j; i < m; i++)
+    y[j] += alpha * a[j + j * m] * x[j];
+
+    for (auto i = j + 1; i < m; i++)
       y[j] += alpha * a[i + j * m] * x[i];
   }
 
   for (auto j = 0; j < m; j++)
-    for (auto i = j + 1; i < m; i++) 
+    for (auto i = j + 1; i < m; i++)
       y[i] += alpha * a[i + j * m] * x[j];
 }
 

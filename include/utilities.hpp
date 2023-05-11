@@ -6,7 +6,7 @@
 #include <vector>
 #include <span>
 
-#define MAX_VALUE 64
+#define MAX_VALUE 8
 
 // SCALAR
 
@@ -53,28 +53,8 @@ template <typename T> void print_vector(std::size_t n, std::vector<T> x) {
 // MATRIX
 
 template <typename T>
-std::span<T> get_row(std::size_t n, std::span<T> a, std::size_t i) {
-  return std::span<T>(&a[i * n], n);
-}
-
-template <typename T>
 std::span<T> get_column(std::size_t m, std::span<T> a, std::size_t j) {
   return std::span<T>(&a[j * m], m);
-}
-
-template <typename T>
-std::vector<eve::wide<T>> get_rows(std::size_t n, std::span<T> a, std::size_t i) {
-  auto ai = std::vector<eve::wide<T>>();
-
-  for(auto j = 0; j < n; j++) {
-    auto w = eve::wide<T>([a, i, j, n] (auto k, auto) {
-      return a[(i + k) * n + j];
-    });
-
-    ai.push_back(w);
-  }
-
-  return ai;
 }
 
 // MATRIX
@@ -98,24 +78,14 @@ std::vector<T> create_random_matrix(std::size_t m, std::size_t n) {
   return a;
 }
 
-// template <typename T>
-// void print_matrix(std::size_t m, std::size_t n, std::vector<T> a) {
-//   for (auto i = 0; i < m; i++) {
-//     for (auto j = 0; j < n; j++)
-//       std::cout << a[i * n + j] << ' ';
+template <typename T>
+void print_matrix(std::size_t m, std::size_t n, std::vector<T> a) {
+  for (auto i = 0; i < m; i++) {
+    for (auto j = 0; j < n; j++)
+      std::cout << a[i + j * m] << ' ';
 
-//     std::cout << '\n';
-//   }
-// }
-
-// template <typename T>
-// void print_matrix(std::size_t m, std::size_t n, std::vector<T> a) {
-//   for (auto i = 0; i < m; i++) {
-//     for (auto j = 0; j < n; j++)
-//       std::cout << a[i + j * m] << ' ';
-
-//     std::cout << '\n';
-//   }
-// }
+    std::cout << '\n';
+  }
+}
 
 #endif
