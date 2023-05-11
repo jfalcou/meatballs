@@ -8,11 +8,14 @@
 
 #include <utilities.hpp>
 
+#include <sgemv.hpp>
+#include <ssymv.hpp>
+
 int main() {
   std::srand(std::time(nullptr));
   
-  auto m = 4196;
-  auto n = 4196;
+  auto m = 4096;
+  auto n = 4096;
 
   auto a = create_random_matrix<float>(m, n);
   auto alpha = create_random_scalar<float>();
@@ -32,6 +35,10 @@ int main() {
     y_ = std::vector<float>(y);
 
     bench.run("meatballs", [&] { meatballs::sgemv('N', alpha, a, x, beta, y_); });
+    
+    y_ = std::vector<float>(y);
+
+    bench.run("naive", [&] { sgemv('N', alpha, a, x, beta, y_); });
   }
 
   {
@@ -44,25 +51,47 @@ int main() {
     y_ = std::vector<float>(y);
 
     bench.run("meatballs", [&] { meatballs::sgemv('T', alpha, a, x, beta, y_); });
+    
+    y_ = std::vector<float>(y);
+
+    bench.run("naive", [&] { sgemv('T', alpha, a, x, beta, y_); });
   }
 
   // TODO: sgemv:C
 
   // TODO: sgbmv
 
-  // TODO: ssymv:U
+  {
+    bench.title("ssymv:U");
 
-  // {
-  //   bench.title("ssymv:L");
+    auto y_ = std::vector<float>(y);
 
-  //   auto y_ = std::vector<float>(y);
-
-  //   bench.run("cblas", [&] { cblas_ssymv(CblasRowMajor, CblasLower, n, alpha, a.data(), n, x.data(), 1, 1.0f, y_.data(), 1); });
+    bench.run("cblas", [&] { cblas_ssymv(CblasColMajor, CblasUpper, n, alpha, a.data(), n, x.data(), 1, 1.0f, y_.data(), 1); });
     
-  //   y_ = std::vector<float>(y);
+    y_ = std::vector<float>(y);
 
-  //   bench.run("meatballs", [&] { meatballs::ssymv('L', alpha, a, x, 1.0f, y_); });
-  // }
+    bench.run("meatballs", [&] { meatballs::ssymv('U', alpha, a, x, 1.0f, y_); });
+    
+    y_ = std::vector<float>(y);
+
+    bench.run("naive", [&] { ssymv('U', alpha, a, x, 1.0f, y_); });
+  }
+
+  {
+    bench.title("ssymv:L");
+
+    auto y_ = std::vector<float>(y);
+
+    bench.run("cblas", [&] { cblas_ssymv(CblasColMajor, CblasLower, n, alpha, a.data(), n, x.data(), 1, 1.0f, y_.data(), 1); });
+    
+    y_ = std::vector<float>(y);
+
+    bench.run("meatballs", [&] { meatballs::ssymv('L', alpha, a, x, 1.0f, y_); });
+    
+    y_ = std::vector<float>(y);
+
+    bench.run("naive", [&] { ssymv('L', alpha, a, x, 1.0f, y_); });
+  }
 
   // TODO: ssbmv
 
