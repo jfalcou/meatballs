@@ -10,6 +10,7 @@
 
 #include <sgemv.hpp>
 #include <ssymv.hpp>
+#include <strmv.hpp>
 
 int main() {
   std::srand(std::time(nullptr));
@@ -97,7 +98,33 @@ int main() {
 
   // TODO: sspmv
 
-  // TODO: strmv
+  {
+    bench.title("strmv:U");
+
+    auto x_ = std::vector<float>(x);
+
+    bench.run("cblas", [&] { cblas_strmv(CblasRowMajor, CblasUpper, CblasNoTrans, CblasNonUnit, n, a.data(), n, x_.data(), 1); });
+    
+    // TODO
+
+    x_ = std::vector<float>(x);
+
+    bench.run("naive", [&] { strmv('U', a, x_); });
+  }
+
+  {
+    bench.title("strmv:L");
+
+    auto x_ = std::vector<float>(x);
+
+    bench.run("cblas", [&] { cblas_strmv(CblasRowMajor, CblasLower, CblasNoTrans, CblasNonUnit, n, a.data(), n, x_.data(), 1); });
+    
+    // TODO
+
+    x_ = std::vector<float>(x);
+
+    bench.run("naive", [&] { strmv('L', a, x_); });
+  }
 
   // TODO: stbmv
 

@@ -6,6 +6,7 @@
 
 #include <sgemv.hpp>
 #include <ssymv.hpp>
+#include <strmv.hpp>
 
 int main() {
   std::srand(std::time(nullptr));
@@ -24,7 +25,7 @@ int main() {
     auto yc = std::vector<float>(y);
 
     meatballs::sgemv('N', alpha, a, x, beta, ym);
-    cblas_sgemv(CblasColMajor, CblasNoTrans, m, n, alpha, a.data(), n, x.data(), 1, beta, yc.data(), 1);
+    cblas_sgemv(CblasColMajor, CblasNoTrans, m, n, alpha, a.data(), m, x.data(), 1, beta, yc.data(), 1);
 
     auto b = ym == yc;
 
@@ -36,7 +37,7 @@ int main() {
     auto yc = std::vector<float>(y);
 
     meatballs::sgemv('T', alpha, a, x, beta, ym);
-    cblas_sgemv(CblasColMajor, CblasTrans, m, n, alpha, a.data(), n, x.data(), 1, beta, yc.data(), 1);
+    cblas_sgemv(CblasColMajor, CblasTrans, m, n, alpha, a.data(), m, x.data(), 1, beta, yc.data(), 1);
 
     auto b = ym == yc;
 
@@ -75,7 +76,31 @@ int main() {
 
   // TODO: sspmv
 
-  // TODO: strmv
+  {
+    auto xm = std::vector<float>(x);
+    auto xc = std::vector<float>(x);
+
+    // meatballs::strmv('U', a, xm);
+    strmv('U', a, xm);
+    cblas_strmv(CblasRowMajor, CblasUpper, CblasNoTrans, CblasNonUnit, n, a.data(), n, xc.data(), 1);
+
+    auto b = xm == xc;
+
+    std::cout << "[strmv:U]\t" << (b ? "OK" : "KO") << "\n";
+  }
+
+  {
+    auto xm = std::vector<float>(x);
+    auto xc = std::vector<float>(x);
+
+    // meatballs::strmv('L', a, xm);
+    strmv('L', a, xm);
+    cblas_strmv(CblasRowMajor, CblasLower, CblasNoTrans, CblasNonUnit, n, a.data(), n, xc.data(), 1);
+
+    auto b = xm == xc;
+
+    std::cout << "[strmv:L]\t" << (b ? "OK" : "KO") << "\n";
+  }
 
   // TODO: stbmv
 
