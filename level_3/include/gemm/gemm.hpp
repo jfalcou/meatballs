@@ -22,16 +22,50 @@ namespace gemm
     namespace detail
     {
         /**
-         * @brief Matrix multiplication of small matrices (M,N,K <= 8)
+         * @brief Multiplies two matrices by combining multiple kernels
+         */
+        template<typename T>
+        constexpr void compose_kernel(const int M, const int N, const int K, const T* a, int lda, const T* b, int ldb, T* c, int ldc) {
+            const bool has_kernel_M = M <= kernel_max_dim;
+            const bool has_kernel_N = N <= kernel_max_dim;
+            const bool has_kernel_K = K <= kernel_max_dim;
+
+            if (has_kernel_M && has_kernel_N && has_kernel_K) {
+                get_kernel<T>(M, N, K)(a, lda, b, ldb, c, ldc);
+            } else {
+                const auto split_dim = std::max({
+                    M * !has_kernel_M,
+                    N * !has_kernel_N,
+                    K * !has_kernel_K
+                });
+
+                if (split_dim == M) {
+                    compose_kernel<T>(kernel_max_dim, N, K, a, lda, b, ldb, c, ldc);
+                    compose_kernel<T>(M - kernel_max_dim, N, K, a + kernel_max_dim * lda, lda, b, ldb, c + kernel_max_dim * ldc, ldc);
+                } else if (split_dim == N) {
+                    compose_kernel<T>(M, kernel_max_dim, K, a, lda, b, ldb, c, ldc);
+                    compose_kernel<T>(M, N - kernel_max_dim, K, a, lda, b + kernel_max_dim, ldb, c + kernel_max_dim, ldc);
+                } else { // split_dim == K
+                    compose_kernel<T>(M, N, kernel_max_dim, a, lda, b, ldb, c, ldc);
+                    compose_kernel<T>(M, N, K - kernel_max_dim, a + kernel_max_dim, lda, b + kernel_max_dim * ldb, ldb, c, ldc);
+                }
+            }
+        }
+
+        /**
+         * @brief Matrix multiplication of small matrices
          */
         template<typename T>
         void gemm_small(
           const int M, const int N, const int K, const T alpha, const T* A, const int lda, const T* B, const int ldb, const T beta, T* C, const int ldc) {
             std::vector<T> ab(M * N);
-            detail::get_kernel<T>(M, N, K)(A, lda, B, ldb, ab.data(), N);
+            const int ldab = N;
+
+            compose_kernel(M, N, K, A, lda, B, ldb, ab.data(), ldab);
+
             for (int i = 0; i < M; i++) {
                 for (int j = 0; j < N; j++) {
-                    C[i * ldc + j] = alpha * ab[i * N + j] + beta * C[i * ldc + j];
+                    C[i * ldc + j] = alpha * ab[i * ldab + j] + beta * C[i * ldc + j];
                 }
             }
         }
@@ -66,10 +100,11 @@ namespace gemm
             constexpr auto TILE_HEIGHT = gemm::detail::TILE_HEIGHT<T>;
             constexpr auto TILE_WIDTH = gemm::detail::TILE_WIDTH<T>;
 
-            static_assert(BM % TILE_HEIGHT == 0, "BM should be a multiple of the TILE_HEIGHT");
-            static_assert(BN % TILE_WIDTH == 0, "BN should be a multiple of the TILE_WIDTH");
-            static_assert(BK % TILE_HEIGHT == 0, "BK should be a multiple of the TILE_HEIGHT");
+            static_assert(BM % TILE_HEIGHT == 0, "BM should be a multiple of TILE_HEIGHT");
+            static_assert(BN % TILE_WIDTH == 0, "BN should be a multiple of TILE_WIDTH");
+            static_assert(BK % TILE_HEIGHT == 0, "BK should be a multiple of TILE_HEIGHT");
 
+            // round M and N to the nearest multiple of TILE_HEIGHT AND TILE_WIDTH RESPECTIVELY
             const int padded_M = ((M + TILE_HEIGHT - 1) / TILE_HEIGHT) * TILE_HEIGHT;
             const int padded_N = ((N + TILE_WIDTH - 1) / TILE_WIDTH) * TILE_WIDTH;
 
@@ -85,40 +120,40 @@ namespace gemm
 
             std::array<wide_t, TILE_HEIGHT> c_tile;
 
-            // "true" dimensions of the current block
-            int rem_M;
-            int rem_N;
-            int rem_K;
+            // "real" dimensions of the current block
+            int real_M;
+            int real_N;
+            int real_K;
 
             for (int i = 0; i < M; i += BM) {
-                rem_M = std::min(M - i, BM);
+                real_M = std::min(M - i, BM);
                 for (int k = 0; k < K; k += BK) {
-                    rem_K = std::min(K - k, BK);
-                    /// Fill work_A
+                    real_K = std::min(K - k, BK);
+                    // Fill work_A
                     std::memset(work_A.data(), 0, work_A.size() * sizeof(T));
-                    for (int row = 0; row < rem_M; row++) {
-                        std::memcpy(work_A.data() + row * ldwa, A + (i + row) * lda + k, rem_K * sizeof(T));
+                    for (int row = 0; row < real_M; row++) {
+                        std::memcpy(work_A.data() + row * ldwa, A + (i + row) * lda + k, real_K * sizeof(T));
                     }
 
                     for (int j = 0; j < N; j += BN) {
-                        rem_N = std::min(N - j, BN);
-                        /// Fill work_B
+                        real_N = std::min(N - j, BN);
+                        // Fill work_B
                         std::memset(work_B.data(), 0, work_B.size() * sizeof(T));
-                        for (int row = 0; row < rem_K; row++) {
-                            std::memcpy(work_B.data() + row * ldwb, B + (k + row) * ldb + j, rem_N * sizeof(T));
+                        for (int row = 0; row < real_K; row++) {
+                            std::memcpy(work_B.data() + row * ldwb, B + (k + row) * ldb + j, real_N * sizeof(T));
                         }
 
-                        /// Block
-                        for (int bi = 0; bi < rem_M; bi += TILE_HEIGHT) {
-                            for (int bj = 0; bj < rem_N; bj += TILE_WIDTH) {
-                                /// Kernel
+                        // Block
+                        for (int bi = 0; bi < real_M; bi += TILE_HEIGHT) {
+                            for (int bj = 0; bj < real_N; bj += TILE_WIDTH) {
+                                // Kernel
                                 // Load tile of C
                                 for (int tile_i = 0; tile_i < TILE_HEIGHT; tile_i++) {
                                     c_tile[tile_i] = wide_t{AB + (i + bi + tile_i) * ldab + (j + bj)};
                                 }
 
                                 // Compute C <- A*B
-                                for (int bk = 0; bk < rem_K; bk++) {
+                                for (int bk = 0; bk < real_K; bk++) {
                                     const wide_t wb{work_B.data() + bk * ldwb + bj};
                                     for (int tile_i = 0; tile_i < TILE_HEIGHT; tile_i++) {
                                         c_tile[tile_i] = eve::fma(work_A[(bi + tile_i) * ldwa + bk], wb, c_tile[tile_i]);
@@ -129,10 +164,10 @@ namespace gemm
                                 for (int tile_i = 0; tile_i < TILE_HEIGHT; tile_i++) {
                                     eve::store(c_tile[tile_i], AB + (i + bi + tile_i) * ldab + (j + bj));
                                 }
-                                /// End of kernel
+                                // End of kernel
                             }
                         }
-                        /// End of block
+                        // End of block
                     }
                 }
             }
@@ -175,7 +210,7 @@ namespace gemm
     void gemm(transposition, transposition, const int M, const int N, const int K, const T alpha, const T* A, const int lda, const T* B, const int ldb,
       const T beta, T* C, const int ldc) {
         // no transposition for the moment
-        if (M <= 8 && N <= 8 && K <= 8) {
+        if (M < 64 && N < 64 && K < 64) {
             detail::gemm_small(M, N, K, alpha, A, lda, B, ldb, beta, C, ldc);
         } else {
             detail::gemm(M, N, K, alpha, A, lda, B, ldb, beta, C, ldc);

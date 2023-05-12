@@ -82,8 +82,8 @@ TEST_CASE("1 <= dim <= 512", "[square][small]") {
 
         if (util::collect_metrics) {
             const auto& results = bench.results();
-            util::openblas_metrics.push_back(util::average_cycles_per_op(results[0]));
-            util::gemm_metrics.push_back(util::average_cycles_per_op(results[1]));
+            util::openblas_metrics.push_back(util::average_metrics(results[0]));
+            util::gemm_metrics.push_back(util::average_metrics(results[1]));
             util::dimensions.push_back(dim);
         }
     }
@@ -161,8 +161,8 @@ TEST_CASE(">= 1024", "[square][large]") {
 
         if (util::collect_metrics) {
             const auto& results = bench.results();
-            util::openblas_metrics.push_back(util::average_cycles_per_op(results[0]));
-            util::gemm_metrics.push_back(util::average_cycles_per_op(results[1]));
+            util::openblas_metrics.push_back(util::average_metrics(results[0]));
+            util::gemm_metrics.push_back(util::average_metrics(results[1]));
             util::dimensions.push_back(dim);
         }
     }
@@ -199,8 +199,8 @@ TEST_CASE(">= 4096", "[square][very large]") {
 
         if (util::collect_metrics) {
             const auto& results = bench.results();
-            util::openblas_metrics.push_back(util::average_cycles_per_op(results[0]));
-            util::gemm_metrics.push_back(util::average_cycles_per_op(results[1]));
+            util::openblas_metrics.push_back(util::average_metrics(results[0]));
+            util::gemm_metrics.push_back(util::average_metrics(results[1]));
             util::dimensions.push_back(dim);
         }
     }

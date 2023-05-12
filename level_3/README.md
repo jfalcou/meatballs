@@ -48,9 +48,13 @@ $ ./build/benchmark/benchmark --reporter=plot::out=metrics.json
 $ python3 benchmark/plot.py metrics.json -o plot.svg
 ```
 
-It gives the following plot for the benchmark run mentionned above:
+It gives the following plots for the benchmark run mentionned above:
 
-![](./benchmark/plot.png)
+*GFlops:*
+![](./benchmark/plot_gflops.png)
+
+*Cycles per computed value:*
+![](./benchmark/plot_cpv.png)
 
 ## TODO
 
@@ -72,5 +76,5 @@ It gives the following plot for the benchmark run mentionned above:
 	- [x] Small matrices
 	- [x] Big matrices
 	- [ ] Double
-	- [ ] Plots
+	- [x] Plots
 

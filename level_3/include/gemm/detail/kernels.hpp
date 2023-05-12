@@ -18,6 +18,12 @@ namespace gemm::detail
     template<typename T>
     constexpr kernel<T> get_kernel(const int M, const int N, const int K);
 
+    /**
+     * Maximum dimension of the kernels (handwritten and composed) generated
+     * at compile time.
+     */
+    constexpr int kernel_max_dim = 16;
+
     constexpr bool is_handwritten_M(int M) {
         return M == 1 || M == 2 || M == 4 || M == 8;
     }
@@ -72,7 +78,7 @@ namespace gemm::detail
                 constexpr auto split = get_previous_valid_value(N, is_handwritten_N);
                 composed_kernel<T, M, split, K>(a, lda, b, ldb, c, ldc);
                 composed_kernel<T, M, N - split, K>(a, lda, b + split, ldb, c + split, ldc);
-            } else { // max_dim == K
+            } else { // split_dim == K
                 constexpr auto split = get_previous_valid_value(K, is_handwritten_K);
                 composed_kernel<T, M, N, split>(a, lda, b, ldb, c, ldc);
                 composed_kernel<T, M, N, K - split>(a + split, lda, b + split * ldb, ldb, c, ldc);
@@ -80,19 +86,25 @@ namespace gemm::detail
         }
     }
 
+
     /**
      * @brief Gets the index of a specific kernel in the kernels table given the matrices dimensions
      */
     constexpr int kernel_index(int M, int N, int K) {
-        return 100 * M + 10 * N + K;
+        return kernel_max_dim * kernel_max_dim * (M - 1) + kernel_max_dim * (N - 1) + K - 1;
     }
 
     /**
-     * @brief Fills an array with pointers to the kernels for M,N,K <= 8
+     * Total number of kernels
+     */
+    constexpr int nb_kernels = kernel_max_dim * kernel_max_dim * kernel_max_dim;
+
+    /**
+     * @brief Fills an array with pointers to the kernels for M,N,K <= kernel_max_dim
      */
     template<typename T>
-    consteval std::array<kernel<T>, 889> generate_kernel_table() {
-        std::array<kernel<T>, 889> kernels{};
+    consteval std::array<kernel<T>, nb_kernels> generate_kernel_table() {
+        std::array<kernel<T>, nb_kernels> kernels{};
 
         // set the handwritten kernels manually
         kernels[kernel_index(1, 1, 1)] = &kernel_111;
@@ -161,7 +173,7 @@ namespace gemm::detail
         kernels[kernel_index(8, 8, 8)] = &kernel_888;
 
         // add the composed kernels
-        constexpr auto dimensions = std::integer_sequence<int, 1, 2, 3, 4, 5, 6, 7, 8>{};
+        constexpr auto dimensions = std::integer_sequence<int, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16>{};
 
         auto set_kernel = [&]<int M, int N, int K>() {
             if (!is_handwritten_kernel(M, N, K)) {

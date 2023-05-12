@@ -1,6 +1,7 @@
 #ifndef GEMM_BENCHMARK_UTIL_HPP
 #define GEMM_BENCHMARK_UTIL_HPP
 
+#include "fmt/ostream.h"
 #include <catch2/catch_config.hpp>
 #include <catch2/catch_get_random_seed.hpp>
 #include <nanobench.h>
@@ -49,8 +50,8 @@ namespace util
     inline bool collect_metrics = false;
 
     // Values collected during the benchmark, for plotting
-    inline std::vector<double> openblas_metrics;
-    inline std::vector<double> gemm_metrics;
+    inline std::vector<std::pair<double, double>> openblas_metrics;
+    inline std::vector<std::pair<double, double>> gemm_metrics;
 
     // Dimensions used for the x axis of the plot
     inline std::vector<int> dimensions;
@@ -62,11 +63,16 @@ namespace util
     }
 
     // Returns the average number of cycles per operation for a benchmark run
-    inline double average_cycles_per_op(const ankerl::nanobench::Result& res) {
+    inline std::pair<double, double> average_metrics(const ankerl::nanobench::Result& res) {
         using Measure = ankerl::nanobench::Result::Measure;
         const double average_cycles = res.average(Measure::cpucycles);
         const double nb_computed_values = res.config().mBatch;
-        return average_cycles / nb_computed_values;
+        const double cycles_per_value = average_cycles / nb_computed_values;
+
+        const double dim = std::sqrt(res.config().mBatch);
+        const double flops = (dim * dim * dim) / res.average(Measure::elapsed);
+
+        return std::make_pair(flops / 10e9, cycles_per_value);
     }
 
     // Naive matrix multiplication
