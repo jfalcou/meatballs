@@ -127,9 +127,9 @@ void xsymv_u(T alpha, std::span<T> a, std::span<T> x, T beta, std::span<T> y) {
     auto i = 0;
     auto m = j;
 
-    auto aj = std::span<T>(&a[0 + j * n], m);
-    auto yi = std::span<T>(&y[0], m);
-    auto xi = std::span<T>(&x[0], m);
+    auto aj = std::span<T>(&a[i + j * n], m);
+    auto yi = std::span<T>(&y[i], m);
+    auto xi = std::span<T>(&x[i], m);
 
     xaxpy(alpha * x[j], aj, yi);
   }
